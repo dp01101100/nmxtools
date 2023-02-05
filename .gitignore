@@ -13,11 +13,7 @@ decodev2.c
 decodev3
 decodev3.c
 doextract-orig.sh
-doextract.sh
 dofixleap-v3
-dogetpos.sh
-domasspos.sh
-dosort.sh
 dumpv3.c
 julday.f
 leapseconds
