@@ -1,0 +1,163 @@
+Basic directions on how to use this collection of programs.  Some of the steps
+call for using the GEOFON seed data tools as well, so it is wise to have them
+avaiable for use.
+
+1.  Extract mseed packets from the store file.
+    Use the tv2mseed or tv3mseed as appropriate for your V2 or V3 Taurus system.
+    Extract each Z, N and E stream into a separate file, as follows:
+
+    tv2mseed -z /tmp/z.dat -n /tmp/n.dat -e /tmp/e.dat \
+       store/taurus_0665_001.store
+
+    This extracts mseed data from a set of store files starting with
+    store/taurus_0665_001.store, store/taurus_0665_002.store,  etc.
+    and puts the Z stream in /tmp/z.dat, N in /tmp/n.dat and E in /tmp/e.dat.
+
+    SOH stream mseed output is 512 byte blockettes.
+
+2.  Re-block the mseed data and optionally set the station and network names.
+    The data from the Taurus stores is saved in 512 byte mseed blockettes.
+    These are somewhat small and the header sequence field (six decimal digits)
+    will rapidly exhaust the field size.  A common block size for archived
+    seismic data is 4096 bytes.
+    
+    The GEOFON program make_qseed will reblock the data.  While doing this, it
+    will also (optionally) rewrite header information that you might want to
+    change:  the station name (rarely set right by the datalogger) and the
+    network code (ditto).  For example, the command
+
+    make_qseed /tmp/z.dat -b 512 -S BABY -n YK -o /tmp
+
+    will reblock the data in /tmp/z.dat, change the station name to BABY and
+    the network code to YK.  The output file will be put into the directory
+    /tmp and will be named with SSSSYYMMDDHHMMSS.CCC where SSSS is the station
+    name, YYMMDDHHMMSS is the year, month, day, hour, minute and second of the
+    first sample, and CCC is the FDSN channel code.
+
+    The timing of the SOH streams may need to be explicitly set because it is
+    inferred from successive sample times that are only approximately
+    determined by the datalogger.  Generally they are one per minute.  Use
+    the -s option to override any incorrect sample rate, e.g.
+
+    make_qseed /tmp/soh-mz.dat -s -60.0 -b 512 -S BABY -n YK -o /tmp
+
+3.  Sort the blockettes into ascending time sequence.
+    Yes, this is hard to believe, but the Taurus datalogger is *NOT* guaranteed
+    to output mseed blockettes in the proper time sequence!  This step makes
+    sure that the blockettes are in time order.
+
+    Continuing with the data example before, the command
+
+    mkdir /tmp/sort ; ls /tmp/BABY*.BH[ENZ] | sh dosort.sh /tmp/sort
+
+    will take the files created in step 2 and sort the blockettes in them into
+    ascending time order.  The output files, placed in the directory /tmp/sort
+    (created with the mkdir command), will be renamed with the first sample
+    time in each file.
+
+4.  Split the mseed blockette stream into manageable chunks.
+    Only one file per data stream has been created so far.  It is more
+    convenient when finding small amounts of data related to an event (say,
+    a one hour time window around each earthquake) to have the data streams
+    subsetted into 6 hr, 12 hr, or 1 day chunks.  The GEOFON programs to
+    build SEED volumes use this feature to rapidly skip to the data of interest.
+    The segmented mseed data streams thereby become a pool of data files named
+    in according to their first sample times to optimize easy data access.
+
+    First, decide where your data pool will be built.  Using a temporary one for
+    safety is a good choice.  Once you are convinced the data in it is good,
+    then you can merge it with a master data pool for production use.
+
+    First create a directory for your temporary pool.  Say it is /tmp/pool;
+    thus the command,
+
+    mkdir /tmp/pool
+
+    will make the directory.  Now use the splitseed program to segment the
+    long data stream into individual files.  The mseed data pool will be in
+    /tmp/pool, so use the splitseed program in the following way to segment
+    the stream into 1 day long chunks:
+
+    splitseed -s 1d -b 4096 -d /tmp/pool /tmp/sort/BABY*BHZ
+    splitseed -s 1d -b 4096 -d /tmp/pool /tmp/sort/BABY*BHN
+    splitseed -s 1d -b 4096 -d /tmp/pool /tmp/sort/BABY*BHE
+
+    This splits each stream for the Z, N and E components into files that will
+    start at the beginning of each day.  The files created will have different
+    suffixes depending on the channel name of the mseed data, and named based
+    on the station name in the mseed blockettes.
+
+    splitseed will also change the station name and network code in the mseed
+    data blockettes if necessary.  Use the -S ssss and -N cc to optionally
+    change the name to ssss and the network code to cc.
+
+5.  Do data gap checks.
+    There is nothing that guarantees that your data is continuous in an mseed
+    data stream.  You might want to investigate whether/why there are any
+    gaps in it for station quality monitoring of power outages, incorrect
+    recording parameters, etc.  Use the GEOFON tool check_seed to do this:
+
+    ls /tmp/pool/BABY*BHZ | while read f; do check_seed $f ; done 
+
+    Check reports of "Time-gap" in the data files, and troubleshoot them.
+
+    Some dataloggers do not respond well when power outages occur.  They
+    will sometimes leave fragments of mseed data blockettes in the data
+    stream.  A message from check_seed that says,
+
+    Incorrect # samples in record 1, in header 1426 in control words 1213
+
+    indicates this condition.  This means that the time span of the data
+    (in the mseed blockette header) does not correspond to the number of
+    data samples.  If you want to fix this, use the make_qseed program
+    with the option -R to recalculate header time spans from the data
+    itself.
+
+6.  Do leap second corrections.
+    No datalogger I have seen handles leap seconds correctly in all cases.
+    If a leap second occurred in your data, you will have a one second gap
+    and a one second overlap in your data somewhere that will need fixing.  
+    The program msleapfix is designed to do this.  After locating where the
+    gap/overlap exists from the previous step, use the msleapfix to repair
+    the data time stamps to remove the gap and overlap.  Hopefully you won't
+    have to deal with this.  The cases are somewhat complex; see the
+    instructions in the comments at the beginning of the program for how
+    to cope with them.
+
+    Some dataloggers (Nanometrics Taurus, for example) will make a leap
+    second mistake and mistime data for up to 6 monthis *before* a leap
+    second happens.  Others will mistime data between the time the leap
+    second occurs and when the next GPS clock fix (a few hours or less).
+    The failure modes are quite varied, and no cookbook will handle all
+    situations.  You must diagnose them yourself or be content with
+    corrupt data for some time period around the leap second.
+
+7.  Do data quality checks.
+    For quality control of site conditions, do data quality checks by taking
+    a quick look at your data.  SAC is a good tool for this.  It can read
+    mseed data files.  A good approach is to look at a month of data at a
+    time and see whether there are any anomalies.  For example, the data
+    in the month of Feb. 2008 might be examined in this way:
+
+    sac
+    read mseed /tmp/pool/BABY0802*BHZ
+    p1
+    quit
+
+    This uses SAC's ability to read raw mseed data and plot it.  Each file
+    will be one day long, so you can see how the station performs on a
+    daily level.
+
+8.  Merge the data into your master pool.
+    Just copy it when you're happy with its condition:
+
+    mv /tmp/pool/BABY*BH[ENZ] /data/mseed
+
+    which assumes that the master data pool is in the directory /data/mseed.
+
+9.  Check for outages > 1 day.  This is for your data yield.  Use the script
+    chkdays.sh to do this.  It checks for gaps in the names of files in the
+    data pool.  Process each station and each component separately with the
+    list of file names (without a directory prefix):
+
+    (cd /data/mseed; ls BABY*BHZ) | sh chkdays.sh
