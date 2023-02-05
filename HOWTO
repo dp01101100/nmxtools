@@ -2,18 +2,21 @@ Basic directions on how to use this collection of programs.  Some of the steps
 call for using the GEOFON seed data tools as well, so it is wise to have them
 avaiable for use.
 
+0.  Usage info for tv[23]mseed is available with the -h option.
+
 1.  Extract mseed packets from the store file.
     Use the tv2mseed or tv3mseed as appropriate for your V2 or V3 Taurus system.
     Extract each Z, N and E stream into a separate file, as follows:
 
     tv2mseed -z /tmp/z.dat -n /tmp/n.dat -e /tmp/e.dat \
+       -soh /tmp/soh.dat -item T \
        store/taurus_0665_001.store
 
     This extracts mseed data from a set of store files starting with
     store/taurus_0665_001.store, store/taurus_0665_002.store,  etc.
     and puts the Z stream in /tmp/z.dat, N in /tmp/n.dat and E in /tmp/e.dat.
 
-    SOH stream mseed output is 512 byte blockettes.
+    SOH stream mseed output is 512 byte blockettes in /tmp/soh.dat.
 
 2.  Re-block the mseed data and optionally set the station and network names.
     The data from the Taurus stores is saved in 512 byte mseed blockettes.

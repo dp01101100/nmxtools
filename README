@@ -6,17 +6,6 @@ Shell scripts:
 docheck.sh -- run check_seed (from the GEOFON seed writer program collection)
    to check the format/data gaps in daily or monthly MSEED data.
 
-doextract.sh -- query the NMX apollo program to extract daily or monthly MSEED
-   files.  This produces MSEED with a block size of 512 bytes.  To reformat
-   into bigger blocks for use of the MSEED with the GEOFON SEED writer program,
-   copy_seed, use the make_qseed program.  File names given to this must be
-   full path names.
-
-dogetpos.sh -- query the NMX apollo program to get hourly GPS positions from
-   the store to determine average station position.  With the -p flag, meant
-   to be used in conjunction with the PASSCAL 1.9 program "position" to
-   determine the station latitude, longitude and elevation.
-
 dosort.sh -- when MSEED packets are extracted from store files, they are not
    guaranteed to be in ascending time sequence.  This script decodes the time
    stamp of each blockette and uses it to sort the blockettes into ascending
@@ -81,35 +70,6 @@ Data:
 leapseconds -- A file containing leap seconds; used by doextract-orig.sh to
    determine correct duration of daily requests.  Newer version of doextract.sh
    does not need it.
-
-See the directory nmx for the original Nanometrics versions of the tools.
-
-Useful notes:
-
-1) Unless you use tv[23]mseed for data extraction, Apollo must be running on
-port 8080 for the shell scripts to be useful.  To start apollo, run it like so:
-
-   apollo port=8080
-
-2) The store data files must be WRITEABLE by Apollo.  That means you must
-permission them when you make your local copies, or that you must run apollo
-as root(!)  I prefer the former.  Also, any .log files in the directory that
-contains the 'store' directory must also be writeable, and the directory must
-be writeable as well.
-
-3) When you mount Taurus data media on your local computer, it must be mounted
-as an EXT2 file system.  Under MacOSX you will need to have an EXT2 reader;
-MacFUSE is the best one going at this time.  When you mount, if you
-will find that the mount fails, you must do an fsck of the file system before
-it will successfully mount (use the fsck_ext2 program).  Finally, note that
-under Tiger, an automatic mount may fail even on a clean file system.  However a
-manual mount from the command line may work.  Thus, issue
-
-   diskutil mount /dev/diskXsY
-
-to mount the disk slice on /Volumes.  If you don't know what device your media
-is attached to, use "diskutil list" or Apple's Disk Utility/Disk First Aid to
-locate the device name (the X and Y in /dev/diskXsY).
 
 All tools/programs by G. Helffrich/U. Bristol/2006-2014
    Last updated 8 Apr. 2014

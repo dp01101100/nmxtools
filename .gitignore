@@ -5,7 +5,6 @@
 *.o
 checkleapsecs
 cfg/
-chkdays.sh
 decode_99
 decode_99.c
 decodev2
