@@ -6,7 +6,8 @@ FFLAGS = -g -fbounds-check
 CFLAGS = -g
 FC = gfortran
 
-EXEC = rnmseed splitseed mseedtime masspos tv2mseed tv3mseed tv3msleapfix
+EXEC = rnmseed splitseed mseedtime masspos tv2mseed tv3mseed tv3msleapfix \
+	dumpv2 dumpv3
 
 rnmseed: rnmseed.o julday.o
 	$(FC) ${FFLAGS} -o rnmseed rnmseed.o julday.o
@@ -34,6 +35,12 @@ tv3mseed: tv3mseed.o
 
 tv3msleapfix: tv3msleapfix.o
 	$(FC) ${FFLAGS} -o tv3msleapfix tv3msleapfix.o
+
+dumpv2: dumpv2.o
+	$(CC) ${CFLAGS} -o dumpv2 dumpv2.o
+
+dumpv3: dumpv3.o
+	$(CC) ${CFLAGS} -o dumpv3 dumpv3.o
 
 install: mseedtime masspos
 	install -c -m 644 leapseconds $(LIBDIR)

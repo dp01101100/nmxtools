@@ -3,6 +3,7 @@
 .gdb_history
 .sachist
 *.o
+*.dSYM
 checkleapsecs
 cfg/
 decode_99
@@ -13,8 +14,8 @@ decodev3
 decodev3.c
 doextract-orig.sh
 dofixleap-v3
-dumpv3.c
-julday.f
+dumpv2
+dumpv3
 leapseconds
 masspos
 mseedsort
