@@ -1,9 +1,11 @@
-/* Decode data packets in Taurus v3 store files and dump as mseed blockettes.
+/* Decode data packets in Taurus v2 store files and dump as mseed blockettes.
 
    G. Helffrich/U. Bristol
    original v2 31 Aug. 2012 (cloned from v3 store reader)
    last mod 8 Sep. 2013
             5 Feb. 2023
+            9 Feb. 2023
+           11 Feb. 2023
 
 Usage:  tv2mseed {-v | -z <file> | -n <file> | -e <file> |
                   -l [+|-] [jun|dec] <year>} ... <store>
@@ -14,7 +16,10 @@ Command line parameters:
    -z <file> - Dump MSEED blockettes for Z component to named file
    -n <file> - Dump MSEED blockettes for N component to named file
    -e <file> - Dump MSEED blockettes for E component to named file
+   -S <name> - Explicitly set station name
+   -N <name> - Explicitly set network ID
    -soh <file> - Dump SOH detail in named file.
+   -sohdt <sec> - SOH sampling is every <sec> seconds (default 60).
    -item {T|Z|N|E|V|P} - SOH item to dump.  Encoding:
       T - temperature in logger (C)
       V - power supply voltage (mV)
@@ -56,6 +61,8 @@ Command line parameters:
 char *prog;
 
 short verb = 0, lpsc = 0;
+
+char snam[5], snet[2];
 
 enum soh_info {
    SOH_UNASSIGNED,
@@ -133,7 +140,10 @@ void usage(){
    "   -z <file> - Dump MSEED blockettes for Z component to named file\n"
    "   -n <file> - Dump MSEED blockettes for N component to named file\n"
    "   -e <file> - Dump MSEED blockettes for E component to named file\n"
-   "   -soh <file> - Dump SOH detail in named file.\n"
+   "   -S <name> - Explicitly set station name\n"
+   "   -N <name> - Explicitly set network ID\n"
+   "   -soh <file> - Dump SOH detail in named file\n"
+   "   -sohdt <sec> - SOH sampling is every <sec> seconds (default 60)\n"
    "   -item {T|Z|N|E|V|P} - SOH item to dump.  Encoding:\n"
    "      T - temperature in logger (C)\n"
    "      V - power supply voltage (mV)\n"
@@ -261,24 +271,21 @@ void bufsoh(
 	 dtms = (ptim - sohtim)/1000000;
 	 dtnow = 1e-3*dtms;
          if (sohcnt > 1) {
-	    /* SOH sample rate can range from intervals of 5 s to 3600 s.
-	       The general approach is to use the sample intervals found
-	       so far to determine a long-term rate.  If this is exceeded
-	       by 2.5 s, then declare a time discontinuity and dump the data
-	       accumulated so far.
+	    /* SOH sample rate is usually long, from 5 s to 3600 s.
+	       If this is exceeded by 2.5 s, then declare a time discontinuity
+               and dump the data accumulated so far.
 	    */
 	    int writ = 0;
 	    float chk = fabs(sohdt-1e-3*((ptim - sohtim)/1000000));
-	    sohdt = lrint(sohsum/(sohcnt-1));
-	    if (dtnow>0 && abs(sohdt-dtnow) >= 2.5) {
-	       if (verb) printf("New SOH dt at "
-	             "%04d/%02d/%02d %02d:%02d:%02d.%03d: %d -> %d\n",
+	    if (dtnow>0 && abs(sohdt-dtnow) >= sohdt/6) {
+	       if (verb) printf("SOH gap at "
+	             "%04d/%02d/%02d %02d:%02d:%02d.%03d, %.4f s\n",
 		     1900+tm->tm_year, 1+tm->tm_mon, tm->tm_mday,
 		     tm->tm_hour, tm->tm_min, tm->tm_sec, tv.tv_usec/1000,
-		     sohdt,dtnow);
+                     chk);
 	    }
 	    /* Check if time discontinuity, dump blockette if so */
-	    if (chk > 2.5 /* && sohcnt>20 */) writ = 1;
+	    if (chk > sohdt/6 /* && sohcnt>20 */) writ = 1;
 	    if (sohcnt*itmsiz >= sizeof(sohmsd)-64) writ = 1;
 	    if (writ) {
 	       phw(sohmsd+30, sohcnt); phw(sohmsd+32, -sohdt); /* count, SRF */
@@ -296,15 +303,16 @@ void bufsoh(
 	    sohblk += 1;
 	    snprintf((char*)sohmsd, 7, "%06d", sohblk);     /* Block # 0-5 */
 	    sohmsd[6] = 'D'; sohmsd[7] = ' ';        /* D flag  6-7   */
-	    for(i=0;i<5;i++) sohmsd[8+i] = code[i];  /* Station code 8-12 */
+            for(i=0;i<5;i++)                         /* Station code 8-12 */
+               sohmsd[8+i] = (snam[0] == ' ' ? code[i] : snam[i]);
 	    sohmsd[13] = ' '; sohmsd[14] = ' ';      /* Loc ID 13-14 */
-	    sohmsd[15] = 'A';                        /* Channel ID 15-17 */
+	    sohmsd[15] = 'L';                        /* Channel ID 15-17 */
 	    if (soh_itm == SOH_TEMP){
-	       sohmsd[16] = 'W'; sohmsd[17] = 'I';   /* Temp, internal */
+	       sohmsd[16] = 'K'; sohmsd[17] = 'L';   /* Temp in logger */
 	    } else {
 	       sohmsd[16] = 'E'; sohmsd[17] = soh_itm;/* Voltage, in hole */
 	    }
-	    sohmsd[18] = 'Y'; sohmsd[19] = 'Y';      /* Network code 18-19 */
+	    sohmsd[18] = snet[0]; sohmsd[19] = snet[1]; /* Network code 18-19 */
 	    phw(sohmsd+20, 1900+tm->tm_year);        /* BTIME year 20-21 */
 	    phw(sohmsd+22, 1+tm->tm_yday);           /* BTIME jday 22-23 */
 	    sohmsd[24] = tm->tm_hour;                /* BTIME hour 24 */
@@ -363,10 +371,10 @@ void bufdat(
    /* Build blockette header */
    snprintf((char*)bkhdr+0, 7, "%06d", state->blkno%1000000);
    bkhdr[6] = 'D'; bkhdr[7] = ' ';
-   for(i=0;i<5;i++) bkhdr[8+i] = code[i];
+   for(i=0;i<5;i++) bkhdr[8+i] = (snam[0] == ' ' ? code[i] : snam[i]);
    bkhdr[13] = ' '; bkhdr[14] = ' ';
    for(i=0;i<3;i++) bkhdr[15+i] = state->chid[i];
-   bkhdr[18] = 'Y'; bkhdr[19] = 'Y';
+   bkhdr[18] = snet[0]; bkhdr[19] = snet[1];
    phw(bkhdr+20, tm->tm_year+1900);
    phw(bkhdr+22, tm->tm_yday+1);
    bkhdr[24] = tm->tm_hour;
@@ -550,25 +558,39 @@ int main(int argc, char *argv[]){
 
    prog = argv[0];
 
+   for(i=0;i<sizeof(snam);i++) snam[i] = ' ';
+   for(i=0;i<sizeof(snet);i++) snet[i] = 'Y';
+
    for(i=1; i<argc; i++) {
       if (argv[i][0] == '-') { /* Check for option */
-         if (0 == strncmp(argv[i], "-z", 2)) {
+         if (0 == strcmp(argv[i], "-z")) {
 	    i += 1;
 	    strm[0].fd = fopen(argv[i], "w");
 	    if (strm[0].fd == NULL) err("bad -z file name");
-         } else if (0 == strncmp(argv[i], "-e", 2)) {
+         } else if (0 == strcmp(argv[i], "-e")) {
 	    i += 1;
 	    strm[2].fd = fopen(argv[i], "w");
 	    if (strm[2].fd == NULL) err("bad -e file name");
-         } else if (0 == strncmp(argv[i], "-n", 2)) {
+         } else if (0 == strcmp(argv[i], "-n")) {
 	    i += 1;
 	    strm[1].fd = fopen(argv[i], "w");
 	    if (strm[1].fd == NULL) err("bad -n file name");
-         } else if (0 == strncmp(argv[i], "-soh", 4)) {
+         } else if (0 == strcmp(argv[i], "-soh")) {
 	    i += 1;
 	    sohd.fd = fopen(argv[i], "w");
 	    if (sohd.fd == NULL) err("bad -soh file name");
-         } else if (0 == strncmp(argv[i], "-item", 5)) {
+         } else if (0 == strcmp(argv[i], "-S")) {
+	    i += 1; six = strlen(argv[i]);
+	    memcpy(snam,argv[i],six>sizeof(snam)?sizeof(snam):six);
+         } else if (0 == strcmp(argv[i], "-N")) {
+	    i += 1; six = strlen(argv[i]);
+	    memcpy(snet,argv[i],six>sizeof(snet)?sizeof(snet):six);
+         } else if (0 == strcmp(argv[i], "-sohdt")) {
+            char *p;
+	    i += 1; six = strlen(argv[i]);
+            sohdt = strtol(argv[i],&p,10);
+            if (p-argv[i] != six) err("bad -sohdt value");
+         } else if (0 == strcmp(argv[i], "-item")) {
 	    int j;
 	    for (j=0;j<N_SOHI;j++){
 	       if (0 == strcmp(argv[i+1], soh_item[j].key)) {
@@ -578,7 +600,7 @@ int main(int argc, char *argv[]){
 	    }
 	    if (j>=N_SOHI) err("bad SOH -item name");
 	    i += 1;
-         } else if (0 == strncmp(argv[i], "-fmt", 4)) {
+         } else if (0 == strcmp(argv[i], "-fmt")) {
 	    int j;
 	    for (j=0;j<N_SOHF;j++){
 	       if (0 == strcmp(argv[i+1], soh_fmts[j].key)) {
@@ -588,7 +610,7 @@ int main(int argc, char *argv[]){
 	    }
 	    if (j>=N_SOHF) err("bad SOH -fmt name");
 	    i += 1;
-	 } else if (0 == strncmp(argv[i], "-l", 2)) {
+	 } else if (0 == strcmp(argv[i], "-l")) {
 	    /* Parse leap second syntax: -l {+/-} {jun|dec} <year> */
 	    int dir;
 	    struct tm tm;
@@ -623,9 +645,9 @@ int main(int argc, char *argv[]){
 	    lptm = mktime(&tm);
 	    lpsc = dir;
 	    i += 3;
-         } else if (0 == strncmp(argv[i], "-v", 2)) {
+         } else if (0 == strcmp(argv[i], "-v")) {
 	    verb += 1;
-         } else if (0 == strncmp(argv[i], "-h", 2)) {
+         } else if (0 == strcmp(argv[i], "-h")) {
 	    usage();
 	 } else {
 	    fprintf(stderr, "bad arg (ignored): %s\n", argv[i]);
@@ -670,7 +692,7 @@ int main(int argc, char *argv[]){
    cbuf = malloc(tmp);
    if (cbuf == NULL) err("table buffer error");
    tmp = fread(cbuf, tmp-48, 1, fd);
-   for(i=0;i<siz-1;i++){
+   for(i=0;i<siz;i++){
       int j = i*16;
       aloc[i].off = (off_t)dw((unsigned char*)cbuf+j+ 4) - scum;
       aloc[i].siz = fw((unsigned char*)cbuf+j+12);
@@ -695,7 +717,7 @@ int main(int argc, char *argv[]){
 
    /* Process each part of allocation table */
 
-   atsiz = siz-1; fno = 1; fclose(fd); fd = fopen(store, "r");
+   atsiz = siz; fno = 1; fclose(fd); fd = fopen(store, "r");
    for(i=0; i<atsiz; i++){
       if (verb>1) printf("alloc tbl walk: %d fno %d off %zx: ",
          i, aloc[i].fnum, (size_t)aloc[i].off);

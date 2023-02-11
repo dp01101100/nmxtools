@@ -37,12 +37,18 @@ avaiable for use.
     name, YYMMDDHHMMSS is the year, month, day, hour, minute and second of the
     first sample, and CCC is the FDSN channel code.
 
-    The timing of the SOH streams may need to be explicitly set because it is
-    inferred from successive sample times that are only approximately
-    determined by the datalogger.  Generally they are one per minute.  Use
-    the -s option to override any incorrect sample rate, e.g.
+    The SOH data streams may be output in (human-readable) text or mseed.
+    Mseed output is not compressed, since it is a low-volume data stream.
+    The mseed SOH data blocks are 512 bytes long.  (Reblocking with make_qseed
+    won't work due to their not being compressed.)
 
-    make_qseed /tmp/soh-mz.dat -s -60.0 -b 512 -S BABY -n YK -o /tmp
+    The timing of the SOH streams needs to be explicitly set because it
+    can't be inferred from successive sample times - they are only approximately
+    determined by the datalogger.  Generally they are one per minute.  Use
+    the -sohdt option to tv[23]mseed if different.  Set the station name and
+    network name explicitly with the -S and -N options in any case, because
+    no further processing of SOH data is needed except to split long streams
+    into shorter ones (step 4).
 
 3.  Sort the blockettes into ascending time sequence.
     Yes, this is hard to believe, but the Taurus datalogger is *NOT* guaranteed
@@ -90,6 +96,10 @@ avaiable for use.
     suffixes depending on the channel name of the mseed data, and named based
     on the station name in the mseed blockettes.
 
+    SOH data is low volume, so you might split it into month-long chunks:
+
+    splitseed -s 30d -b 512 -d /tmp/pool /tmp/soh.dat
+
     splitseed will also change the station name and network code in the mseed
     data blockettes if necessary.  Use the -S ssss and -N cc to optionally
     change the name to ssss and the network code to cc.
@@ -120,8 +130,8 @@ avaiable for use.
     No datalogger I have seen handles leap seconds correctly in all cases.
     If a leap second occurred in your data, you will have a one second gap
     and a one second overlap in your data somewhere that will need fixing.  
-    The program msleapfix is designed to do this.  After locating where the
-    gap/overlap exists from the previous step, use the msleapfix to repair
+    The program tv[23]msleapfix is designed to do this.  After locating where
+    the gap/overlap exists from the previous step, use the msleapfix to repair
     the data time stamps to remove the gap and overlap.  Hopefully you won't
     have to deal with this.  The cases are somewhat complex; see the
     instructions in the comments at the beginning of the program for how
@@ -164,3 +174,16 @@ avaiable for use.
     list of file names (without a directory prefix):
 
     (cd /data/mseed; ls BABY*BHZ) | sh chkdays.sh
+
+    Obspy also has some processing tools to display outages for QC purposes;
+    obspy-scan is a useful one.
+
+10. Want to know where your station is from its GPS locks?  This uses the SOH
+    output for the position and then processes the output to get a
+    high-resolution positional fix.  First, get the position information:
+
+    tv2mseed -soh /tmp/pos.dat -item P store/taurus_0665_001.store
+
+    Then process the output with calcpos.sh:
+
+    sh calcpos.sh < /tmp/pos.dat
