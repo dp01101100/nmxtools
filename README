@@ -17,6 +17,10 @@ chkdays.sh -- After all data extracted and cut into day files, this script will
    Reports any gaps > 1 day.  Checks are based only on file names, not the
    data contained in them.
 
+calcpos.sh -- read in a series of GPS positions (usually from the SOH log of
+   the datalogger) and find a robust location for the station.  Based on Jim
+   Fowler's methodology in the PASSCAL program "position".
+
 Programs:
 
 tv2mseed.c -- Program to read a Taurus V2.x store file collection and strip
@@ -55,9 +59,9 @@ rnmseed.f -- Program to rename an MSEED file to a format that reflects the
    first data time in the file.  Used to build non-conflicting file names
    for the data pool used by the GEOFON SEED writer program copy_seed.
 
-msleapfix.f -- Program to fix time problems caused by Taurus v2.x software when
-   satellites start broadcasting upcoming leap second.  Changes mseed blockette
-   time stamps to account for datalogger software bug.
+tv[23]msleapfix.f -- Program to fix time problems caused by Taurus v[23].x
+   software when satellites start broadcasting upcoming leap second.  Changes
+   mseed blockette time stamps to account for datalogger software bug.
 
 Obsolete programs:
 
@@ -72,4 +76,4 @@ leapseconds -- A file containing leap seconds; used by doextract-orig.sh to
    does not need it.
 
 All tools/programs by G. Helffrich/U. Bristol/2006-2014
-   Last updated 8 Apr. 2014
+   Last updated 11 Feb. 2023
