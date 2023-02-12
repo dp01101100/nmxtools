@@ -63,6 +63,9 @@ tv[23]msleapfix.f -- Program to fix time problems caused by Taurus v[23].x
    software when satellites start broadcasting upcoming leap second.  Changes
    mseed blockette time stamps to account for datalogger software bug.
 
+check_mseed.py -- Obspy-based Python program to check a string of files
+   representing continuous data for gaps/overlaps.
+
 Obsolete programs:
 
 masspos.f -- Program to read a reformatted environment .csv file (from the

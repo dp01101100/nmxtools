@@ -9,12 +9,15 @@ avaiable for use.
     Extract each Z, N and E stream into a separate file, as follows:
 
     tv2mseed -z /tmp/z.dat -n /tmp/n.dat -e /tmp/e.dat \
-       -soh /tmp/soh.dat -item T \
+       -S BABY -N YK \
+       -soh /tmp/soh.dat -item T -fmt mseed \
        store/taurus_0665_001.store
 
     This extracts mseed data from a set of store files starting with
     store/taurus_0665_001.store, store/taurus_0665_002.store,  etc.
     and puts the Z stream in /tmp/z.dat, N in /tmp/n.dat and E in /tmp/e.dat.
+    The optional -S and -N flags set the station name and network name if
+    different to what the datalogger knows.
 
     SOH stream mseed output is 512 byte blockettes in /tmp/soh.dat.
 
@@ -102,7 +105,8 @@ avaiable for use.
 
     splitseed will also change the station name and network code in the mseed
     data blockettes if necessary.  Use the -S ssss and -N cc to optionally
-    change the name to ssss and the network code to cc.
+    change the name to ssss and the network code to cc if you didn't do this
+    in the extraction step (1).
 
 5.  Do data gap checks.
     There is nothing that guarantees that your data is continuous in an mseed
@@ -176,7 +180,12 @@ avaiable for use.
     (cd /data/mseed; ls BABY*BHZ) | sh chkdays.sh
 
     Obspy also has some processing tools to display outages for QC purposes;
-    obspy-scan is a useful one.
+    obspy-scan is a useful one.  A Python program using Obspy, check_mseed.py,
+    may also be used for this check, for example:
+
+    python3 check_mseed.py '/data/mseed/BABY*BHZ'
+
+    (note quotes to prevent the shell from expanding the file match pattern.)
 
 10. Want to know where your station is from its GPS locks?  This uses the SOH
     output for the position and then processes the output to get a
