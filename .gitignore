@@ -16,7 +16,6 @@ doextract-orig.sh
 dofixleap-v3
 dumpv2
 dumpv3
-leapseconds
 masspos
 mseedsort
 mseedtime
