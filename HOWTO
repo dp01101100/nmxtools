@@ -1,6 +1,6 @@
 Basic directions on how to use this collection of programs.  Some of the steps
 call for using the GEOFON seed data tools as well, so it is wise to have them
-avaiable for use.
+avaiable for use.  See https://github.com/ghfbsd/seedstuff for these components.
 
 0.  Usage info for tv[23]mseed is available with the -h option.
 
@@ -28,7 +28,7 @@ avaiable for use.
 
     Continuing with the data example before, the command
 
-    mkdir /tmp/sort ; ls /tmp/[zne].dat | sh dosort.sh /tmp/sort
+    mkdir /tmp/sort ; ls /tmp/[zne].dat | sh dosort.sh /tmp/sort 512
 
     will take the files created in step 2 and sort the blockettes in them into
     ascending time order.  The output files, placed in the directory /tmp/sort
