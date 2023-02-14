@@ -21,7 +21,23 @@ avaiable for use.
 
     SOH stream mseed output is 512 byte blockettes in /tmp/soh.dat.
 
-2.  Re-block the mseed data and optionally set the station and network names.
+2.  Sort the blockettes into ascending time sequence.
+    Yes, this is hard to believe, but the Taurus datalogger is *NOT* guaranteed
+    to output mseed blockettes in the proper time sequence!  This step makes
+    sure that the blockettes are in time order.
+
+    Continuing with the data example before, the command
+
+    mkdir /tmp/sort ; ls /tmp/[zne].dat | sh dosort.sh /tmp/sort
+
+    will take the files created in step 2 and sort the blockettes in them into
+    ascending time order.  The output files, placed in the directory /tmp/sort
+    (created with the mkdir command), will be renamed with the first sample
+    time in each file.  The files will be named with SSSSYYMMDDHHMMSS.CCC
+    where SSSS is the station name, YYMMDDHHMMSS is the year, month, day, hour,
+    minute and second of the first sample, and CCC is the FDSN channel code.
+
+3.  Re-block the mseed data and optionally set the station and network names.
     The data from the Taurus stores is saved in 512 byte mseed blockettes.
     These are somewhat small and the header sequence field (six decimal digits)
     will rapidly exhaust the field size.  A common block size for archived
@@ -32,13 +48,15 @@ avaiable for use.
     change:  the station name (rarely set right by the datalogger) and the
     network code (ditto).  For example, the command
 
-    make_qseed /tmp/z.dat -b 512 -S BABY -n YK -o /tmp
+    make_qseed /tmp/sort/*.BHZ -b 512 -S BABY -n YK -o /tmp
 
-    will reblock the data in /tmp/z.dat, change the station name to BABY and
-    the network code to YK.  The output file will be put into the directory
-    /tmp and will be named with SSSSYYMMDDHHMMSS.CCC where SSSS is the station
-    name, YYMMDDHHMMSS is the year, month, day, hour, minute and second of the
-    first sample, and CCC is the FDSN channel code.
+    will reblock the time-ordered data blockettes in /tmp/sort/*.BHZ, change
+    the station name to BABY and the network code to YK.  The output file will
+    be put into the directory /tmp and will be named with SSSSYYMMDDHHMMSS.CCC
+    where SSSS is the station name, YYMMDDHHMMSS is the year, month, day, hour,
+    minute and second of the first sample, and CCC is the FDSN channel code.
+
+    You'll have to run make_qseed on the BHE and BHN components as well.
 
     The SOH data streams may be output in (human-readable) text or mseed.
     Mseed output is not compressed, since it is a low-volume data stream.
@@ -52,20 +70,6 @@ avaiable for use.
     network name explicitly with the -S and -N options in any case, because
     no further processing of SOH data is needed except to split long streams
     into shorter ones (step 4).
-
-3.  Sort the blockettes into ascending time sequence.
-    Yes, this is hard to believe, but the Taurus datalogger is *NOT* guaranteed
-    to output mseed blockettes in the proper time sequence!  This step makes
-    sure that the blockettes are in time order.
-
-    Continuing with the data example before, the command
-
-    mkdir /tmp/sort ; ls /tmp/BABY*.BH[ENZ] | sh dosort.sh /tmp/sort
-
-    will take the files created in step 2 and sort the blockettes in them into
-    ascending time order.  The output files, placed in the directory /tmp/sort
-    (created with the mkdir command), will be renamed with the first sample
-    time in each file.
 
 4.  Split the mseed blockette stream into manageable chunks.
     Only one file per data stream has been created so far.  It is more
