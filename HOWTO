@@ -120,7 +120,8 @@ avaiable for use.  See https://github.com/ghfbsd/seedstuff for these components.
 
     ls /tmp/pool/BABY*BHZ | while read f; do check_seed $f ; done 
 
-    Check reports of "Time-gap" in the data files, and troubleshoot them.
+    Check reports of "Time-gap" or "Time-overlap" in the data files, and
+    troubleshoot them.
 
     Some dataloggers do not respond well when power outages occur.  They
     will sometimes leave fragments of mseed data blockettes in the data
@@ -189,14 +190,18 @@ avaiable for use.  See https://github.com/ghfbsd/seedstuff for these components.
 
     python3 check_mseed.py '/data/mseed/BABY*BHZ'
 
-    (note quotes to prevent the shell from expanding the file match pattern.)
+    (note quotes to prevent the shell from expanding the file match pattern).
 
 10. Want to know where your station is from its GPS locks?  This uses the SOH
     output for the position and then processes the output to get a
-    high-resolution positional fix.  First, get the position information:
+    high-resolution estimate of the position.  First, get the position
+    information from each copy of the store (X, Y, Z, one from each service
+    run) during a deployment:
 
-    tv2mseed -soh /tmp/pos.dat -item P store/taurus_0665_001.store
+    tv2mseed -soh /tmp/posX.dat -item P X/store/taurus_0665_001.store
+    tv2mseed -soh /tmp/posY.dat -item P Y/store/taurus_0665_001.store
+    tv2mseed -soh /tmp/posZ.dat -item P Z/store/taurus_0665_001.store
 
     Then process the output with calcpos.sh:
 
-    sh calcpos.sh < /tmp/pos.dat
+    cat /tmp/pos[XYZ].dat | sh calcpos.sh
