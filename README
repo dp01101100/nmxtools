@@ -12,6 +12,11 @@ dosort.sh -- when MSEED packets are extracted from store files, they are not
    time order.  This data stream should subsequently be split into smaller,
    hour long or day long files of blockettes for archiving and retrieval.
 
+dropblock.sh -- copy a file of MSEED blocks to standard output, leaving out
+   a list of block numbers (counting from 1 as the first block).  This is
+   principally to leave out duplicated blocks when the datalogger loses power
+   and restarts, losing track of what buffered data it had already flushed.
+
 chkdays.sh -- After all data extracted and cut into day files, this script will
    take a set of file names and check that they represent continuous times.
    Reports any gaps > 1 day.  Checks are based only on file names, not the
