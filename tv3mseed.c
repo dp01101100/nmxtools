@@ -6,6 +6,7 @@
              5 Feb. 2023
              9 Feb. 2023
             11 Feb. 2023
+            17 Feb. 2023
 
 Usage:  tv3mseed {-v | -z <file> | -n <file> | -e <file> |
                   -l [+|-] [jun|dec] <year>} ... <store>
@@ -127,7 +128,6 @@ struct sstate sohd = {
 /* Blockette buffer for SOH output in MSEED data form */
 uint64_t sohtim;
 int sohblk = 0, sohdt = 60, sohcnt = 0;
-double sohsum = 0;
 unsigned char sohmsd[512];
 
 void usage(){
@@ -298,10 +298,9 @@ void bufsoh(
 	       writ = fwrite(sohmsd, sizeof(sohmsd), 1, sohd.fd);
 	       if (writ < 1)
 	          errcnt(sohblk, "Error writing SOH output file");
-	       sohsum = sohcnt = 0;
+	       sohcnt = 0;
 	    }
 	 }
-	 if (sohcnt > 0) sohsum += 1e-3*dtms;
          if (sohcnt == 0) {
 	    /* Start of new buffer.  Build up MSEED header and type 1000
 	       blockette */
@@ -342,7 +341,6 @@ void bufsoh(
 
 	    /* Clear data portion */
 	    for (i=56;i<sizeof(sohmsd); i++) sohmsd[i] = 0;
-	    sohsum = 0;
 	 }
 	 if (itmsiz == 2)
 	    phw(sohmsd+64+sohcnt*2, ihw);
@@ -611,6 +609,11 @@ int main(int argc, char *argv[]){
 	    }
 	    if (j>=N_SOHF) err("bad SOH -fmt name");
 	    i += 1;
+         } else if (0 == strcmp(argv[i], "-sohdt")) {
+            char *p;
+	    i += 1; six = strlen(argv[i]);
+            sohdt = strtol(argv[i],&p,10);
+            if (p-argv[i] != six) err("bad -sohdt value");
 	 } else if (0 == strcmp(argv[i], "-l")) {
 	    /* Parse leap second syntax: -l {+/-} {jun|dec} <year> */
 	    int dir;
